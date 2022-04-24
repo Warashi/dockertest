@@ -2,16 +2,18 @@ package dockertest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"net"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/mount"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
+	"github.com/docker/go-connections/nat"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -30,7 +32,8 @@ type RunOptions struct {
 type Option func(*RunOptions) error
 
 type Resource struct {
-	ID string
+	ID    string
+	ports nat.PortMap
 }
 
 func NewPool() (*Pool, error) {
@@ -68,10 +71,11 @@ func (p *Pool) Run(ctx context.Context, opts ...Option) (*Resource, error) {
 			Healthcheck: opt.Healthcheck,
 		},
 		&container.HostConfig{
-			Mounts:     opt.Mounts,
-			AutoRemove: true,
+			PublishAllPorts: true,
+			Mounts:          opt.Mounts,
+			AutoRemove:      true,
 		},
-		&network.NetworkingConfig{},
+		nil,
 		opt.Platform,
 		"",
 	)
@@ -88,7 +92,7 @@ func (p *Pool) Run(ctx context.Context, opts ...Option) (*Resource, error) {
 		return nil, fmt.Errorf("p.client.ContainerInspect: %w", err)
 	}
 	if health := c.State.Health; health == nil || health.Status == types.NoHealthcheck || health.Status == types.Healthy {
-		return &Resource{ID: c.ID}, nil
+		return &Resource{ID: c.ID, ports: c.NetworkSettings.Ports}, nil
 	}
 
 	msgCh, errCh := p.client.Events(ctx, types.EventsOptions{Filters: filters.NewArgs(
@@ -100,7 +104,7 @@ func (p *Pool) Run(ctx context.Context, opts ...Option) (*Resource, error) {
 		select {
 		case msg := <-msgCh:
 			if msg.Action == "health_status: healthy" {
-				return &Resource{ID: resp.ID}, nil
+				return &Resource{ID: resp.ID, ports: c.NetworkSettings.Ports}, nil
 			}
 		case err := <-errCh:
 			p.Purge(context.Background(), &Resource{ID: resp.ID})
@@ -117,4 +121,16 @@ func (p *Pool) Purge(ctx context.Context, r *Resource) error {
 		return fmt.Errorf("r.client.ContainerKill: %w", err)
 	}
 	return nil
+}
+
+func (r *Resource) GetHostPort(proto, port string) (string, error) {
+	p, err := nat.NewPort(proto, port)
+	if err != nil {
+		return "", fmt.Errorf("nat.NewPort: %w", err)
+	}
+	m, ok := r.ports[p]
+	if !ok || len(m) == 0 {
+		return "", errors.New("port not found")
+	}
+	return net.JoinHostPort(m[0].HostIP, m[0].HostPort), nil
 }
