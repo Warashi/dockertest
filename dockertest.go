@@ -79,8 +79,12 @@ func (p *Pool) Run(ctx context.Context, opts ...Option) (*Resource, error) {
 		return nil, fmt.Errorf("p.client.ContainerStart: %w", err)
 	}
 
-	if opt.Healthcheck == nil {
-		return &Resource{ID: resp.ID}, nil
+	c, err := p.client.ContainerInspect(ctx, resp.ID)
+	if err != nil {
+		return nil, fmt.Errorf("p.client.ContainerInspect: %w", err)
+	}
+	if health := c.State.Health; health == nil || health.Status == types.NoHealthcheck || health.Status == types.Healthy {
+		return &Resource{ID: c.ID}, nil
 	}
 
 	msgCh, errCh := p.client.Events(ctx, types.EventsOptions{Filters: filters.NewArgs(
