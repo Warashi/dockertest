@@ -3,6 +3,7 @@ package dockertest
 import (
 	"context"
 	"fmt"
+	"io"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -47,15 +48,18 @@ func (p *Pool) Run(ctx context.Context, opts ...Option) (*Resource, error) {
 			return nil, fmt.Errorf("opts[%d]: %w", i, err)
 		}
 	}
-	//var platform string
-	//if opt.Platform != nil {
-	//	platform = opt.Platform.Architecture
-	//}
-	//r, err := p.client.ImagePull(ctx, opt.Image, types.ImagePullOptions{Platform: platform})
-	//if err != nil {
-	//	return nil, fmt.Errorf("p.client.ImagePull: %w", err)
-	//}
-	//io.Copy(io.Discard, r)
+
+	if _, _, err := p.client.ImageInspectWithRaw(ctx, opt.Image); err != nil {
+		var platform string
+		if opt.Platform != nil {
+			platform = opt.Platform.Architecture
+		}
+		r, err := p.client.ImagePull(ctx, opt.Image, types.ImagePullOptions{Platform: platform})
+		if err != nil {
+			return nil, fmt.Errorf("p.client.ImagePull: %w", err)
+		}
+		io.Copy(io.Discard, r)
+	}
 
 	resp, err := p.client.ContainerCreate(ctx,
 		&container.Config{
