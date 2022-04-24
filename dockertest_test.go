@@ -56,8 +56,7 @@ func TestPool_Run(t *testing.T) {
 			name: "success-healthcheck",
 			args: args{
 				opts: RunOptions{
-					Image:       "warashi/nginx:ok",
-					Healthcheck: &container.HealthConfig{},
+					Image: "warashi/nginx:ok",
 				},
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
@@ -68,8 +67,7 @@ func TestPool_Run(t *testing.T) {
 			name: "fail-healthcheck",
 			args: args{
 				opts: RunOptions{
-					Image:       "warashi/nginx:ng",
-					Healthcheck: &container.HealthConfig{},
+					Image: "warashi/nginx:ng",
 				},
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
