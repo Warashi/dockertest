@@ -5,7 +5,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/docker/docker/api/types/container"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -68,6 +67,17 @@ func TestPool_Run(t *testing.T) {
 			args: args{
 				opts: RunOptions{
 					Image: "warashi/nginx:ng",
+				},
+			},
+			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
+				return assert.Error(tt, err)
+			},
+		},
+		{
+			name: "fail-pull",
+			args: args{
+				opts: RunOptions{
+					Image: "warashi/nginx:notexist",
 				},
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
