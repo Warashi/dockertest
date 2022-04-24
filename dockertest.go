@@ -24,12 +24,11 @@ type Pool struct {
 type RunOptions struct {
 	Image       string
 	Cmd         []string
+	Env         []string
 	Mounts      []mount.Mount
 	Healthcheck *container.HealthConfig
 	Platform    *v1.Platform
 }
-
-type Option func(*RunOptions) error
 
 type Resource struct {
 	ID    string
@@ -44,14 +43,7 @@ func NewPool() (*Pool, error) {
 	return &Pool{client: c}, nil
 }
 
-func (p *Pool) Run(ctx context.Context, opts ...Option) (*Resource, error) {
-	opt := new(RunOptions)
-	for i := range opts {
-		if err := opts[i](opt); err != nil {
-			return nil, fmt.Errorf("opts[%d]: %w", i, err)
-		}
-	}
-
+func (p *Pool) Run(ctx context.Context, opt *RunOptions) (*Resource, error) {
 	if _, _, err := p.client.ImageInspectWithRaw(ctx, opt.Image); err != nil {
 		var platform string
 		if opt.Platform != nil {
@@ -68,6 +60,7 @@ func (p *Pool) Run(ctx context.Context, opts ...Option) (*Resource, error) {
 		&container.Config{
 			Image:       opt.Image,
 			Cmd:         opt.Cmd,
+			Env:         opt.Env,
 			Healthcheck: opt.Healthcheck,
 		},
 		&container.HostConfig{
