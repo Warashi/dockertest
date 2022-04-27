@@ -36,7 +36,8 @@ func TestPool_Run(t *testing.T) {
 	pool, err := NewPool()
 	require.NoError(t, err)
 	type args struct {
-		opts RunOptions
+		image string
+		opts  RunOptions
 	}
 	tests := []struct {
 		name      string
@@ -46,9 +47,7 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "no-healthcheck",
 			args: args{
-				opts: RunOptions{
-					Image: "warashi/nginx:none",
-				},
+				image: "warashi/nginx:none",
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.NoError(tt, err)
@@ -57,9 +56,7 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "success-healthcheck",
 			args: args{
-				opts: RunOptions{
-					Image: "warashi/nginx:ok",
-				},
+				image: "warashi/nginx:ok",
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.NoError(tt, err)
@@ -68,9 +65,7 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "fail-healthcheck",
 			args: args{
-				opts: RunOptions{
-					Image: "warashi/nginx:ng",
-				},
+				image: "warashi/nginx:ng",
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.Error(tt, err)
@@ -79,9 +74,7 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "fail-pull",
 			args: args{
-				opts: RunOptions{
-					Image: "warashi/nginx:notexist",
-				},
+				image: "warashi/nginx:notexist",
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.Error(tt, err)
@@ -94,7 +87,7 @@ func TestPool_Run(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			t.Cleanup(cancel)
-			got, err := pool.Run(ctx, &tt.args.opts)
+			got, err := pool.Run(ctx, tt.args.image)
 			t.Cleanup(func() { pool.Purge(context.Background(), got) })
 			tt.assertion(t, err)
 		})
@@ -193,7 +186,7 @@ func TestResource_GetHostPort(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			t.Cleanup(cancel)
-			r, err := pool.Run(ctx, &RunOptions{Image: tt.image})
+			r, err := pool.Run(ctx, tt.image)
 			require.NoError(t, err)
 			_, err = r.GetHostPort(tt.args.proto, tt.args.port)
 			tt.assertion(t, err)

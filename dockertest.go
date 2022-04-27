@@ -11,7 +11,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/mount"
+	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
@@ -22,13 +22,14 @@ type Pool struct {
 }
 
 type RunOptions struct {
-	Image       string
-	Cmd         []string
-	Env         []string
-	Mounts      []mount.Mount
-	Healthcheck *container.HealthConfig
-	Platform    *v1.Platform
+	Config           *container.Config
+	HostConfig       *container.HostConfig
+	NetworkingConfig *network.NetworkingConfig
+	Platform         *v1.Platform
+	ContainerName    string
 }
+
+type Option func(*RunOptions)
 
 type Resource struct {
 	ID    string
@@ -43,35 +44,28 @@ func NewPool() (*Pool, error) {
 	return &Pool{client: c}, nil
 }
 
-func (p *Pool) Run(ctx context.Context, opt *RunOptions) (*Resource, error) {
-	if _, _, err := p.client.ImageInspectWithRaw(ctx, opt.Image); err != nil {
-		var platform string
-		if opt.Platform != nil {
-			platform = opt.Platform.Architecture
-		}
-		r, err := p.client.ImagePull(ctx, opt.Image, types.ImagePullOptions{Platform: platform})
+func (p *Pool) Run(ctx context.Context, image string, opts ...Option) (*Resource, error) {
+	opt := new(RunOptions)
+	opt.Config = &container.Config{Image: image}
+	opt.HostConfig = &container.HostConfig{PublishAllPorts: true, AutoRemove: true}
+
+	for _, o := range opts {
+		o(opt)
+	}
+
+	var platform string
+	if opt.Platform != nil {
+		platform = opt.Platform.Architecture
+	}
+	if _, _, err := p.client.ImageInspectWithRaw(ctx, opt.Config.Image); err != nil {
+		r, err := p.client.ImagePull(ctx, opt.Config.Image, types.ImagePullOptions{Platform: platform})
 		if err != nil {
 			return nil, fmt.Errorf("p.client.ImagePull: %w", err)
 		}
 		io.Copy(io.Discard, r)
 	}
 
-	resp, err := p.client.ContainerCreate(ctx,
-		&container.Config{
-			Image:       opt.Image,
-			Cmd:         opt.Cmd,
-			Env:         opt.Env,
-			Healthcheck: opt.Healthcheck,
-		},
-		&container.HostConfig{
-			PublishAllPorts: true,
-			Mounts:          opt.Mounts,
-			AutoRemove:      true,
-		},
-		nil,
-		opt.Platform,
-		"",
-	)
+	resp, err := p.client.ContainerCreate(ctx, opt.Config, opt.HostConfig, opt.NetworkingConfig, opt.Platform, opt.ContainerName)
 	if err != nil {
 		return nil, fmt.Errorf("p.client.ContainerCreate: %w", err)
 	}
