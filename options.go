@@ -102,3 +102,7 @@ func WithCommand(cmd []string) ContainerOption {
 func WithShellCommand(cmd string) ContainerOption {
 	return func(c *container.Config) { c.Cmd = []string{"sh", "-c", cmd} }
 }
+
+func WithEnv(name, value string) ContainerOption {
+	return func(c *container.Config) { c.Env = append(c.Env, name+"="+value) }
+}
