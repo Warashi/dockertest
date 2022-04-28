@@ -51,7 +51,11 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "no-healthcheck",
 			args: args{
-				image: "warashi/nginx:none",
+				image: "busybox",
+				opts: []Option{
+					WithNoHealthcheck(),
+					WithShellCommand("trap : TERM INT; sleep infinity & wait"),
+				},
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.NoError(tt, err)
@@ -60,7 +64,12 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "success-healthcheck",
 			args: args{
-				image: "warashi/nginx:ok",
+				image: "busybox",
+				opts: []Option{
+					WithShellCommand("trap : TERM INT; sleep infinity & wait"),
+					WithHealthcheck("true"),
+					WithHealthcheckInterval(100 * time.Millisecond),
+				},
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.NoError(tt, err)
@@ -69,7 +78,12 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "fail-healthcheck",
 			args: args{
-				image: "warashi/nginx:ng",
+				image: "busybox",
+				opts: []Option{
+					WithShellCommand("trap : TERM INT; sleep infinity & wait"),
+					WithHealthcheck("false"),
+					WithHealthcheckInterval(100 * time.Millisecond),
+				},
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.Error(tt, err)
@@ -78,7 +92,7 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "fail-pull",
 			args: args{
-				image: "warashi/nginx:notexist",
+				image: "warashi/notexist",
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
 				return assert.Error(tt, err)
@@ -87,7 +101,7 @@ func TestPool_Run(t *testing.T) {
 		{
 			name: "with-platform",
 			args: args{
-				image: "warashi/nginx:ok",
+				image: "busybox",
 				opts:  []Option{WithPlatform("amd64")},
 			},
 			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
