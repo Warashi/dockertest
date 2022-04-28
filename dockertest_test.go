@@ -206,6 +206,7 @@ func TestResource_GetHostPort(t *testing.T) {
 			t.Cleanup(cancel)
 			r, err := pool.Run(ctx, tt.image)
 			require.NoError(t, err)
+			t.Cleanup(func() { pool.Purge(context.Background(), r) })
 			_, err = r.GetHostPort(tt.args.proto, tt.args.port)
 			tt.assertion(t, err)
 		})
