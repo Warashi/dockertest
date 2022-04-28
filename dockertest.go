@@ -34,8 +34,6 @@ func NewPool() (*Pool, error) {
 
 func (p *Pool) Run(ctx context.Context, image string, opts ...Option) (*Resource, error) {
 	opt := new(RunOptions)
-	opt.HostConfig = &container.HostConfig{PublishAllPorts: true, AutoRemove: true}
-
 	for _, o := range opts {
 		o.Apply(opt)
 	}
