@@ -11,6 +11,8 @@ import (
 )
 
 func TestNewPool(t *testing.T) {
+	t.Parallel()
+
 	tests := []struct {
 		name      string
 		assertion assert.ErrorAssertionFunc
@@ -33,6 +35,8 @@ func TestNewPool(t *testing.T) {
 }
 
 func TestPool_Run(t *testing.T) {
+	t.Parallel()
+
 	pool, err := NewPool()
 	require.NoError(t, err)
 	type args struct {
@@ -85,7 +89,7 @@ func TestPool_Run(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			t.Cleanup(cancel)
 			got, err := pool.Run(ctx, tt.args.image)
 			t.Cleanup(func() { pool.Purge(context.Background(), got) })
@@ -95,6 +99,8 @@ func TestPool_Run(t *testing.T) {
 }
 
 func TestPool_Purge(t *testing.T) {
+	t.Parallel()
+
 	type fields struct {
 		client *client.Client
 	}
@@ -123,6 +129,8 @@ func TestPool_Purge(t *testing.T) {
 }
 
 func TestResource_GetHostPort(t *testing.T) {
+	t.Parallel()
+
 	pool, err := NewPool()
 	require.NoError(t, err)
 	type args struct {
@@ -184,7 +192,7 @@ func TestResource_GetHostPort(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			t.Cleanup(cancel)
 			r, err := pool.Run(ctx, tt.image)
 			require.NoError(t, err)
