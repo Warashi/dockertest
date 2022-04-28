@@ -11,25 +11,13 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/events"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
 	"github.com/docker/go-connections/nat"
-	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 type Pool struct {
 	client *client.Client
 }
-
-type RunOptions struct {
-	Config           *container.Config
-	HostConfig       *container.HostConfig
-	NetworkingConfig *network.NetworkingConfig
-	Platform         *v1.Platform
-	ContainerName    string
-}
-
-type Option func(*RunOptions)
 
 type Resource struct {
 	ID    string
@@ -46,26 +34,33 @@ func NewPool() (*Pool, error) {
 
 func (p *Pool) Run(ctx context.Context, image string, opts ...Option) (*Resource, error) {
 	opt := new(RunOptions)
-	opt.Config = &container.Config{Image: image}
 	opt.HostConfig = &container.HostConfig{PublishAllPorts: true, AutoRemove: true}
 
 	for _, o := range opts {
-		o(opt)
+		o.Apply(opt)
 	}
 
-	var platform string
-	if opt.Platform != nil {
-		platform = opt.Platform.Architecture
+	if opt.Config == nil {
+		opt.Config = &container.Config{Image: image}
+	} else {
+		opt.Config.Image = image
 	}
+	if opt.HostConfig == nil {
+		opt.HostConfig = &container.HostConfig{PublishAllPorts: true, AutoRemove: true}
+	} else {
+		opt.HostConfig.PublishAllPorts = true
+		opt.HostConfig.AutoRemove = true
+	}
+
 	if _, _, err := p.client.ImageInspectWithRaw(ctx, opt.Config.Image); err != nil {
-		r, err := p.client.ImagePull(ctx, opt.Config.Image, types.ImagePullOptions{Platform: platform})
+		r, err := p.client.ImagePull(ctx, opt.Config.Image, types.ImagePullOptions{Platform: opt.Platform})
 		if err != nil {
 			return nil, fmt.Errorf("p.client.ImagePull: %w", err)
 		}
 		io.Copy(io.Discard, r)
 	}
 
-	resp, err := p.client.ContainerCreate(ctx, opt.Config, opt.HostConfig, opt.NetworkingConfig, opt.Platform, opt.ContainerName)
+	resp, err := p.client.ContainerCreate(ctx, opt.Config, opt.HostConfig, opt.NetworkingConfig, nil, opt.ContainerName)
 	if err != nil {
 		return nil, fmt.Errorf("p.client.ContainerCreate: %w", err)
 	}

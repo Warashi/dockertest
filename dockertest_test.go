@@ -41,7 +41,7 @@ func TestPool_Run(t *testing.T) {
 	require.NoError(t, err)
 	type args struct {
 		image string
-		opts  RunOptions
+		opts  []Option
 	}
 	tests := []struct {
 		name      string
@@ -84,6 +84,16 @@ func TestPool_Run(t *testing.T) {
 				return assert.Error(tt, err)
 			},
 		},
+		{
+			name: "with-platform",
+			args: args{
+				image: "warashi/nginx:ok",
+				opts:  []Option{WithPlatform("amd64")},
+			},
+			assertion: func(tt assert.TestingT, err error, i ...interface{}) bool {
+				return assert.NoError(tt, err)
+			},
+		},
 	}
 	for _, tt := range tests {
 		tt := tt
@@ -91,7 +101,7 @@ func TestPool_Run(t *testing.T) {
 			t.Parallel()
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			t.Cleanup(cancel)
-			got, err := pool.Run(ctx, tt.args.image)
+			got, err := pool.Run(ctx, tt.args.image, tt.args.opts...)
 			t.Cleanup(func() { pool.Purge(context.Background(), got) })
 			tt.assertion(t, err)
 		})
