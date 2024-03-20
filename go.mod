@@ -3,7 +3,7 @@ module github.com/Warashi/dockertest
 go 1.18
 
 require (
-	github.com/docker/docker v24.0.7+incompatible
+	github.com/docker/docker v24.0.9+incompatible
 	github.com/docker/go-connections v0.4.0
 	github.com/stretchr/testify v1.7.1
 )
